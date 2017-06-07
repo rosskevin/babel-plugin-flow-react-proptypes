@@ -5,8 +5,8 @@ type A = {
 } 
 
 type Props = {
-    ...A,
-    bar: string
+    bar: string,
+    ...A
 };
 
 class MyComponent extends React.Component {
