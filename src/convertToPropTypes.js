@@ -14,7 +14,12 @@ export default function convertToPropTypes(node, importedTypes, internalTypes) {
       //  ObjectTypeSpreadProperty - Array<{key, value}>
       const result = convertToPropTypes(subnode, importedTypes, internalTypes)
 
-      properties.push(result)
+      if (Array.isArray(result)){
+        result.forEach((prop) => properties.push(prop))
+      }
+      else {
+        properties.push(result);
+      }
     });
 
     // return a shape
@@ -33,6 +38,11 @@ export default function convertToPropTypes(node, importedTypes, internalTypes) {
     }
 
     return {key, value};
+  }
+  else if (node.type === 'ObjectTypeSpreadProperty') {
+    // FIXME: $Exact vs inexact semantics - MUST DO! - https://github.com/facebook/flow/issues/3534#issuecomment-287580240
+    const spreadShape = convertToPropTypes(node.argument.typeParameters.params[0], importedTypes, internalTypes);
+    return spreadShape.properties; // return flattened properties from shape
   }
   else if (node.type === 'FunctionTypeAnnotation') resultPropType = {type: 'func'};
   else if (node.type === 'AnyTypeAnnotation') resultPropType = {type: 'any'};
