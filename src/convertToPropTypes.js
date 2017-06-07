@@ -5,22 +5,34 @@ export default function convertToPropTypes(node, importedTypes, internalTypes) {
   let resultPropType;
 
   if (node.type === 'ObjectTypeAnnotation') {
-    const ret = node.properties.map((subnode) => {
-      const key = subnode.key.name;
-      let value = subnode.value;
+    const properties = []
+    
+    // recurse on object properties
+    node.properties.forEach((subnode) => {
+      // result may be from:
+      //  ObjectTypeProperty - {key, value}
+      //  ObjectTypeSpreadProperty - Array<{key, value}>
+      const result = convertToPropTypes(subnode, importedTypes, internalTypes)
 
-      // recurse
-      value = convertToPropTypes(value, importedTypes, internalTypes);
-
-      // handles id?: string
-      if (value) {
-        value.isRequired = !subnode.optional && !value.optional;
-      }
-
-      return {key, value};
+      properties.push(result)
     });
 
-    resultPropType = {type: 'shape', properties: ret, isExact: node.exact};
+    // return a shape
+    resultPropType = {type: 'shape', properties, isExact: node.exact};
+  }
+  else if (node.type === 'ObjectTypeProperty') {
+    const key = node.key.name;
+    let value = node.value;
+
+    // recurse
+    value = convertToPropTypes(value, importedTypes, internalTypes);
+
+    // handles id?: string
+    if (value) {
+      value.isRequired = !node.optional && !value.optional;
+    }
+
+    return {key, value};
   }
   else if (node.type === 'FunctionTypeAnnotation') resultPropType = {type: 'func'};
   else if (node.type === 'AnyTypeAnnotation') resultPropType = {type: 'any'};
