@@ -40,7 +40,16 @@ export default function convertToPropTypes(node, importedTypes, internalTypes) {
     return {key, value};
   }
   else if (node.type === 'ObjectTypeSpreadProperty') {
-    const spreadShape = convertToPropTypes(node.argument.typeParameters.params[0], importedTypes, internalTypes);
+    const exact = isExact(node.argument)
+    let subnode
+    if(exact) {
+      subnode = node.argument.typeParameters.params[0]
+    }
+    else {
+      subnode = node.argument
+    }
+    
+    const spreadShape = convertToPropTypes(subnode, importedTypes, internalTypes);
     const properties = spreadShape.properties
 
     // Unless or until the strange default behavior changes in flow (https://github.com/facebook/flow/issues/3214)
@@ -48,12 +57,10 @@ export default function convertToPropTypes(node, importedTypes, internalTypes) {
     
     // @see also explanation of behavior - https://github.com/facebook/flow/issues/3534#issuecomment-287580240
     // @returns flattened properties from shape
-    if(isExact(node.argument)) {
-      return properties; 
-    }
-    else {
+    if(!exact) {
       properties.forEach((prop) => prop.value.isRequired = false);
     }
+    return properties;
   }
   else if (node.type === 'FunctionTypeAnnotation') resultPropType = {type: 'func'};
   else if (node.type === 'AnyTypeAnnotation') resultPropType = {type: 'any'};
