@@ -1,21 +1,21 @@
-import {$debug, PLUGIN_NAME} from './util';
+import {$debug, isExact, PLUGIN_NAME} from './util';
 
 export default function convertToPropTypes(node, importedTypes, internalTypes) {
   $debug('convertToPropTypes', node);
   let resultPropType;
 
   if (node.type === 'ObjectTypeAnnotation') {
-    const properties = []
+    const properties = [];
     
     // recurse on object properties
     node.properties.forEach((subnode) => {
       // result may be from:
       //  ObjectTypeProperty - {key, value}
       //  ObjectTypeSpreadProperty - Array<{key, value}>
-      const result = convertToPropTypes(subnode, importedTypes, internalTypes)
+      const result = convertToPropTypes(subnode, importedTypes, internalTypes);
 
       if (Array.isArray(result)){
-        result.forEach((prop) => properties.push(prop))
+        result.forEach((prop) => properties.push(prop));
       }
       else {
         properties.push(result);
@@ -40,9 +40,20 @@ export default function convertToPropTypes(node, importedTypes, internalTypes) {
     return {key, value};
   }
   else if (node.type === 'ObjectTypeSpreadProperty') {
-    // FIXME: $Exact vs inexact semantics - MUST DO! - https://github.com/facebook/flow/issues/3534#issuecomment-287580240
     const spreadShape = convertToPropTypes(node.argument.typeParameters.params[0], importedTypes, internalTypes);
-    return spreadShape.properties; // return flattened properties from shape
+    const properties = spreadShape.properties
+
+    // Unless or until the strange default behavior changes in flow (https://github.com/facebook/flow/issues/3214)
+    // every property from spread becomes optional unless it uses `...$Exact<T>`
+    
+    // @see also explanation of behavior - https://github.com/facebook/flow/issues/3534#issuecomment-287580240
+    // @returns flattened properties from shape
+    if(isExact(node.argument)) {
+      return properties; 
+    }
+    else {
+      properties.forEach((prop) => prop.value.isRequired = false);
+    }
   }
   else if (node.type === 'FunctionTypeAnnotation') resultPropType = {type: 'func'};
   else if (node.type === 'AnyTypeAnnotation') resultPropType = {type: 'any'};
@@ -80,7 +91,7 @@ export default function convertToPropTypes(node, importedTypes, internalTypes) {
     }
   }
   // Exact
-  else if (node.type === 'GenericTypeAnnotation' && node.id.name === '$Exact') {
+  else if (node.type === 'GenericTypeAnnotation' && isExact(node)) {
     resultPropType = {
       type: 'exact',
       properties: convertToPropTypes(node.typeParameters.params[0], importedTypes, internalTypes),
