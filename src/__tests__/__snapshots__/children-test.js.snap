@@ -4,6 +4,7 @@ exports[`children 1`] = `
 "'use strict';
 
 var React = require('react');
+var Element = React.Element;
 
 function Foo(props) {
   React.createElement(
@@ -13,6 +14,9 @@ function Foo(props) {
   );
 }
 Foo.propTypes = {
-  children: require('prop-types').node.isRequired
+  children: require('prop-types').node.isRequired,
+  children2: require('prop-types').arrayOf(typeof Element === 'function' ? require('prop-types').instanceOf(Element) : require('prop-types').any).isRequired,
+  children3: typeof Element === 'function' ? require('prop-types').instanceOf(Element).isRequired : require('prop-types').any.isRequired,
+  children4: typeof Element === 'function' ? require('prop-types').instanceOf(Element).isRequired : require('prop-types').any.isRequired
 };"
 `;
