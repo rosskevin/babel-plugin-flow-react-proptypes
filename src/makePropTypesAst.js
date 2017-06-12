@@ -4,6 +4,27 @@ import template from 'babel-template';
 
 const USE_PROPTYPES_PACKAGE = true;
 
+const dontSetTemplate = template(`
+(props, propName, componentName) => {
+  if(props[propName] != null) return new Error(\`Invalid prop \\\`\${propName}\\\` of value \\\`\${value}\\\` passed to \\\`\${componentName\}\\\`. Expected undefined or null.\`);
+}
+`);
+
+const exactTemplate = template(`
+(values, prop, displayName) => {
+  var props = $props$;
+  var extra = [];
+  for (var k in values) {
+    if (values.hasOwnProperty(k) && !props.hasOwnProperty(k)) {
+      extra.push(k);
+    }
+  }
+  if (extra.length > 0) {
+    return new Error('Invalid additional prop(s) ' + JSON.stringify(extra));
+  }
+}
+`);
+
 /**
  * Top-level function to generate prop-types AST.
  *
@@ -121,10 +142,10 @@ function makeObjectMergeAstForShapeIntersectRuntime(propTypeData) {
     }
   });
   const runtimeMerge = t.callExpression(
-      t.memberExpression(t.identifier('Object'),
-          t.identifier('assign')
-      ),
-      [t.objectExpression([]), ...propTypeObjects]);
+    t.memberExpression(t.identifier('Object'),
+      t.identifier('assign')
+    ),
+    [t.objectExpression([]), ...propTypeObjects]);
   return runtimeMerge;
 }
 
@@ -137,11 +158,11 @@ function makeObjectMergeAstForShapeIntersectRuntime(propTypeData) {
 function makeShapeAstForShapeIntersectRuntime(propTypeData) {
   const runtimeMerge = makeObjectMergeAstForShapeIntersectRuntime(propTypeData);
   return t.callExpression(
-      t.memberExpression(
-          makePropTypeImportNode(),
-          t.identifier('shape'),
-      ),
-      [runtimeMerge],
+    t.memberExpression(
+      makePropTypeImportNode(),
+      t.identifier('shape'),
+    ),
+    [runtimeMerge],
   );
 }
 
@@ -151,8 +172,8 @@ function makeObjectAstForShape(propTypeData) {
   // but returns the AST for the object instead.
   const rootProperties = propTypeData.properties.map(({key, value}) => {
     return t.objectProperty(
-        t.identifier(key),
-        makePropType(value)
+      t.identifier(key),
+      makePropType(value)
     );
   });
   return t.objectExpression(rootProperties);
@@ -196,7 +217,7 @@ function processQualifiedTypeIdentifierIntoMemberExpression(qualifiedTypeIdentif
 
   const memberExpression = t.memberExpression(objectAST, propertyAST);
 
-  return t.conditionalExpression(makeNullCheckAST(memberExpression), t.objectExpression([]), memberExpression)
+  return t.conditionalExpression(makeNullCheckAST(memberExpression), t.objectExpression([]), memberExpression);
 
 }
 
@@ -242,11 +263,11 @@ function makePropType(data, isExact) {
     // for functions, we assume that the variable already contains a proptype assertion
     const variableNode = t.identifier(data.value);
     let shapeNode = t.callExpression(
-        t.memberExpression(
-            makePropTypeImportNode(),
-            t.identifier('shape'),
-        ),
-        [variableNode],
+      t.memberExpression(
+        makePropTypeImportNode(),
+        t.identifier('shape'),
+      ),
+      [variableNode],
     );
     if (data.isRequired) {
       shapeNode = markNodeAsRequired(shapeNode);
@@ -270,8 +291,8 @@ function makePropType(data, isExact) {
     }
     const shapeObjectExpression = t.objectExpression(shapeObjectProperties);
     node = t.callExpression(
-        t.memberExpression(node, t.identifier('shape')),
-        [shapeObjectExpression]
+      t.memberExpression(node, t.identifier('shape')),
+      [shapeObjectExpression]
     );
   }
   else if (method === 'shape-intersect-runtime') {
@@ -313,8 +334,8 @@ function makePropType(data, isExact) {
       throw new Error('Unknown node type in possible-class for node:', data.value);
     }
     let instanceOfNode = t.callExpression(
-        t.memberExpression(node, t.identifier('instanceOf')),
-        [classSpec]
+      t.memberExpression(node, t.identifier('instanceOf')),
+      [classSpec]
     );
     let anyNode = makeAnyPropTypeAST();
     if (data.isRequired) {
@@ -340,24 +361,3 @@ function makePropType(data, isExact) {
 
   return node;
 }
-
-const dontSetTemplate = template(`
-(props, propName, componentName) => {
-  if(props[propName] != null) return new Error(\`Invalid prop \\\`\${propName}\\\` of value \\\`\${value}\\\` passed to \\\`\${componentName\}\\\`. Expected undefined or null.\`);
-}
-`);
-
-const exactTemplate = template(`
-(values, prop, displayName) => {
-  var props = $props$;
-  var extra = [];
-  for (var k in values) {
-    if (values.hasOwnProperty(k) && !props.hasOwnProperty(k)) {
-      extra.push(k);
-    }
-  }
-  if (extra.length > 0) {
-    return new Error('Invalid additional prop(s) ' + JSON.stringify(extra));
-  }
-}
-`);
